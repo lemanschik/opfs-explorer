@@ -15,7 +15,7 @@
       "js": ["content_script.js"]
   }],
   "background": {
-    "service_worker": "service_worker.js"
+    "service_worker": "background/service_worker.js"
   },
   "icons": {
     "48": "icon48.png",
