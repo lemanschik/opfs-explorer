@@ -1,4 +1,4 @@
-((browser) => {
+
   const connections = {};
 
   browser.runtime.onConnect.addListener((devToolsConnection) => {
@@ -25,4 +25,4 @@
       });
     });
   });
-})(chrome || browser);
+
