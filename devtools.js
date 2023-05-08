@@ -1,4 +1,4 @@
-globalThis.browser = globalThis.browser || chrome;
+const browser = globalThis.browser || chrome;
 
 const createEl = (tagName,{style, dataset,...props}={}) => [Object.assign(document.createElement(tagName),props)]
     .map(el=>Object.assign(el.style,style) && Object.assign(el.dataset,dataset)).find(el=>el);
@@ -89,7 +89,7 @@ const refreshTree = (extPanelWindow) => {
             
             createTreeHTML(value.entries, details.querySelector('div'));
         },
-    }
+    };
     
     browser.tabs.sendMessage(
         browser.devtools.inspectedWindow.tabId,
@@ -132,7 +132,7 @@ const refreshTree = (extPanelWindow) => {
                     createByKind[value.kind](key, value, container);
                 };
             };
-        },
+        }
     );
 };
 
@@ -172,5 +172,5 @@ browser.devtools.panels.create(
         panel.onHidden.addListener(() => {
             clearInterval(interval);
         });
-    },
+    }
 );
