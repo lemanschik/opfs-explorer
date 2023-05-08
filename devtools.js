@@ -1,7 +1,9 @@
 const browser = globalThis.browser || chrome;
 
-const createEl = (tagName,{style, dataset,...props}={}) => [Object.assign(document.createElement(tagName),props)]
-    .map(el=>Object.assign(el.style,style) && Object.assign(el.dataset,dataset)).find(el=>el);
+const applyEl = (el,{style, dataset,...props}={}) => Object.assign(el,props)
+    && Object.assign(el.style, style) && Object.assign(el.dataset, dataset) && el;
+
+const createEl = (tagName,props) => applyEl(document.createElement(tagName),props);
 
 const readableSize = (size) => {
     if (size === 0) return '0B';
@@ -26,7 +28,9 @@ const refreshTree = (extPanelWindow) => {
                     browser.tabs.sendMessage(
                         browser.devtools.inspectedWindow.tabId,
                         {
-                            message: `delete${["File","Directory"].find(type=>type.toLowerCase() === clickEvent.target.dataset.kind)}`,
+                            message: `delete${["File","Directory"].find(
+                                (type) => type.toLowerCase() === clickEvent.target.dataset.kind
+                            )}`,
                             data: clickEvent.target.dataset.relativePath,
                         },
                         (response) => {
@@ -45,49 +49,53 @@ const refreshTree = (extPanelWindow) => {
     };
        
     const createByKind = {
-        file(key,value,container){
+        file(key, { kind, relativePath, size, lastModified, type }, container){
             const div = createEl('div',{ 
                 class: value.kind, 
                 tabIndex: 0, 
                 title: `Type: ${
-                value.type || 'Unknown'
-                } - Last modified: ${new Date(value.lastModified).toLocaleString()}`,
+                type || 'Unknown'
+                } - Last modified: ${new Date(lastModified).toLocaleString()}`,
                 innerHTML: `<span>${key}</span><span class="size">${
-                    readableSize(value.size)
+                    readableSize(size)
                 }</span><span class="delete">🗑️</span>`,
             });
             
             container.append(div);
             
-            Object.assign(div.firstChild.dataset, value);
-            div.firstChild.onclick = (event) => browser.tabs.sendMessage(
-                browser.devtools.inspectedWindow.tabId, 
-                {
-                    message: 'saveFile',
-                    data: event.target.dataset.relativePath,
-                }
-            );
-    
-            div.querySelector('.delete').onclick = deleteSpanOnClick;
-            Object.assign(div.querySelector('.delete').dataset, value);
+            applyEl(div.firstChild, { 
+                dataset: { relativePath: kind },
+                onclick: (event) => browser.tabs.sendMessage(
+                    browser.devtools.inspectedWindow.tabId, 
+                    {
+                        message: 'saveFile',
+                        data: event.target.dataset.relativePath,
+                    }
+                )
+            });
+            
+            applyEl(div.querySelector('.delete'), { 
+                onclick: deleteSpanOnClick, 
+                dataset: { kind, relativePath }, 
+            });
         },
-        directory(key,value,container){
+        directory(key, { kind, relativePath, entries }, container){
+            
             const details = createEl('details', { 
-                open: true, 
-                class: 'root', 
-                innerHTML: `<summary class="${value.kind}">${
-                value.relativePath === '.' 
+                open: true, class: 'root', innerHTML: `<summary class="${kind}">${
+                relativePath === '.' 
                     ? ' ' 
                     : `<span>${key}</span><span class="delete">🗑️</span>`
             }<div></div></summary>`});
     
             container.append(details);
             
-            details.querySelector('.delete') && (
-                details.querySelector('.delete').onclick = deleteSpanOnClick
-            ) && Object.assign(div.querySelector('.delete').dataset, value);
+            details.querySelector('.delete') && applyEl(details.querySelector('.delete'), { 
+                onclick: deleteSpanOnClick, 
+                dataset: { kind, relativePath }, 
+            });
             
-            createTreeHTML(value.entries, details.querySelector('div'));
+            createTreeHTML(entries, details.querySelector('div'));
         },
     };
     
@@ -110,14 +118,13 @@ const refreshTree = (extPanelWindow) => {
                 main.innerHTML = '';
                 main.append(container);
                 main.addEventListener('keydown', (event) => {
-                if (event.target.nodeName === 'SUMMARY') {
-                    if (event.key === 'ArrowRight') {
-                    event.target.parentElement.open = true;
-                    } else if (event.key === 'ArrowLeft') {
-                    event.target.parentElement.open = false;
+                    if (event.target.nodeName === 'SUMMARY' && (
+                        event.key === 'ArrowRight' || event.key === 'ArrowLeft'
+                    )) {                    
+                        event.target.parentElement.open = event.key === 'ArrowRight';
                     }
-                }
                 });
+                
                 const entries = Object.entries(response.structure)
                 .sort(([name], [nextName]) => {
                     if (name === nextName) return 0;
