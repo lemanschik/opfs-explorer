@@ -34,6 +34,16 @@ export const getDirectoryEntriesRecursive = (baseUrl,handle,sendResponse) => {
   return getEntrie[handle.kind]();
 };
 
+export const mkdirP = async (pathname) => pathname.split('/').reduce(
+  (dir,dirName)=>dir.getDirectoryHandle(dirName,{ create: true }),
+  await navigator.storage.getDirectory()
+);
+
+export const readdir = async (pathname) => pathname.split('/').reduce(
+  (dir,dirName)=>dir?.getDirectoryHandle(dirName,{ create: false }),
+  await navigator.storage.getDirectory()
+).values
+
 export const onrequest = async (request, sender, sendResponse) => {
   if (request.message?.startsWith('getDirectory')) {
     return await getDirectoryEntriesRecursive(
