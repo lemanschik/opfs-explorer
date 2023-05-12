@@ -6,26 +6,25 @@ export const getDirectoryEntriesRecursive = (baseUrl,handle,sendResponse) => {
   const pathname = `${baseUrl}/${handle.name}`;
   // Storing handels by pathname for later lookups.
   handelsByPathname[pathname] = handle;
+  const { name, kind } = handle;
   const getEntrie = {
     async file() {
-      const file = await handle.getFile();
+      const { size, type, lastModified } = await handle.getFile();
+      
       const entrie = {
-          name: handle.name,
-          kind: handle.kind,
-          size: file.size,
-          type: file.type,
-          lastModified: file.lastModified,
-          pathname,
-        };
+          pathname,  
+          name, kind,
+          size, type, lastModified,
+      };
+      
       sendResponse({ entrie });
       return entrie;
     },
     async directory() {
-      return [handle.name,{
-          name: handle.name,
-          kind: handle.kind,
+      return [name,{
           pathname,
-          entries: Object.fromEntries(await Promise.all((await handle.values()).map((nextHandle)=>
+          name, kind,
+          entries: Object.fromEntries(await Promise.all((await handelsByPathname[pathname].values()).map((nextHandle)=>
             getDirectoryEntriesRecursive(`${pathname}/${nextHandle.name}`,nextHandle,sendResponse)()
           ))),
       }];    
@@ -42,7 +41,12 @@ export const mkdirP = async (pathname) => pathname.split('/').reduce(
 export const readdir = async (pathname) => pathname.split('/').reduce(
   async (dir,dirName) => await dir?.getDirectoryHandle(dirName,{ create: false }),
   await navigator.storage.getDirectory()
-).values
+).values;
+
+export const getFileHandle = async (pathname,options={create: false}) => await pathname.split('/').reduce(
+  async (dir,dirName) => await dir?.getDirectoryHandle(dirName,options),
+  await navigator.storage.getDirectory()
+).getFileHandle(pathname.slice(pathname.lastIndexOf('/')+1,options);
 
 export const onrequest = async (request, sender, sendResponse) => {
   if (request.message?.startsWith('getDirectory')) {
