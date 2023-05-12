@@ -40,7 +40,7 @@ export const mkdirP = async (pathname) => pathname.split('/').reduce(
 );
 
 export const readdir = async (pathname) => pathname.split('/').reduce(
-  (dir,dirName)=>dir?.getDirectoryHandle(dirName,{ create: false }),
+  async (dir,dirName) => await dir?.getDirectoryHandle(dirName,{ create: false }),
   await navigator.storage.getDirectory()
 ).values
 
