@@ -1,68 +1,71 @@
-const Handels = {} 
+export const handelsByPathname = {} 
 
-const getRelativePath = async (handle) => `./${(await root.resolve(handle)).join('/')}`;    
+export const getRelativePath = async (handle) => `./${(await root.resolve(handle)).join('/')}`;    
 
-const getDirectoryEntriesRecursive = (pathname,handle,sendResponse) => ({
-  file(handle,pathname) {
-    return handle.getFile().then((file) => {
-      return {
-        name: handle.name,
-        kind: handle.kind,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified,
-        pathname,
-      };
-    })
-  },
-  async directory(handle,pathname) {
-    Handels[`${pathname}/${handle.name}`] = handle;
-    const entrie = [handle.name,{
-        name: handle.name,
-        kind: handle.kind,
-        pathname,
-        entries: Object.fromEntries(await Promise.all((await handle.values()).map((nextHandle)=>
-          getDirectoryEntriesRecursive(`${pathname}/${nextHandle.name}`,nextHandle,sendResponse)()
-        ))),
-    }];
-    //sendResponse({ entrie });
-    return entrie;
-  }
-})[handle.kind];
+export const getDirectoryEntriesRecursive = (baseUrl,handle,sendResponse) => {
+  const pathname = `${baseUrl}/${handle.name}`;
+  // Storing handels by pathname for later lookups.
+  handelsByPathname[pathname] = handle;
+  const getEntrie = {
+    async file() {
+      const file = await handle.getFile();
+      const entrie = {
+          name: handle.name,
+          kind: handle.kind,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified,
+          pathname,
+        };
+      sendResponse({ entrie });
+      return entrie;
+    },
+    async directory() {
+      return [handle.name,{
+          name: handle.name,
+          kind: handle.kind,
+          pathname,
+          entries: Object.fromEntries(await Promise.all((await handle.values()).map((nextHandle)=>
+            getDirectoryEntriesRecursive(`${pathname}/${nextHandle.name}`,nextHandle,sendResponse)()
+          ))),
+      }];    
+    }
+  };
+  return getEntrie[handle.kind]();
+};
 
-const onrequest = async (request, sender, sendResponse) => {
+export const onrequest = async (request, sender, sendResponse) => {
   if (request.message?.startsWith('getDirectory')) {
-    await getDirectoryEntriesRecursive(
+    return await getDirectoryEntriesRecursive(
       await navigator.storage.getDirectory(),request.data||'.',sendResponse
     );
-  } else if (request.message?.startsWith('save') === 'saveFile') {
-    const fileHandle = Handles[request.data];
-    //const fileIsDirectory = false
-    // Todo if it is a directory we need to sync overwrite or do what so ever
+  } 
+  if (request.message?.startsWith('save') === 'saveFile') {
+    const fileHandle = handelsByPathname[request.data];
     try {
-      const handle = await showSaveFilePicker({
-        suggestedName: fileHandle.name,
-      });
-
-      (await fileHandle.getFile()).stream().pipeTo(await handle.createWritable());
-
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        console.error(error.name, error.message);
-      }
+      return (await fileHandle.getFile()).stream()
+        .pipeTo(await (await showSaveFilePicker({
+            suggestedName: fileHandle.name
+         })).createWritable());
+    } catch ({name, message}) {
+      name !== 'AbortError' &&
+        console.error(name, message);
     }
-  } else if (request.message?.startsWith('delete')) {
+  }
+  
+  if (request.message?.startsWith('delete')) {
     try {
-      await Handles[request.data].remove();
-      sendResponse({ result: 'ok' });
-    } catch (error) {
-      console.error(error.name, error.message);
-      sendResponse({ error: error.message });
+      await handelsByPathname[request.data].remove();
+      return sendResponse({ result: 'ok' });
+    } catch ({name, message}) {
+      console.error(name, message);
+      sendResponse({ error: message });
     }
   }
 };
 
-const browser = chrome || globalThis.browser;
+export const browser = chrome || globalThis.browser;
+
 browser.runtime.onMessage.addListener((request, sender, sendResponse) =>
   onrequest(request, sender, sendResponse) || true
 );
