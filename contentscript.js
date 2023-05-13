@@ -49,15 +49,13 @@ const getFileEntrie = async (pathname,handle) => {
       };
 };
 
-export const getDirectoryEntries = (baseUrl = '.') => new ReadableStream({ 
+export const getDirectory = (baseUrl = '.') => new ReadableStream({ 
   async start(stream){
     const getDirectoryHandleEntrieRecursive = async (baseUrl = '.') => {
       const [pathname, handle] = getDirectoryHandleEntrie(baseUrl,{create:false});
-     
-      // Storing handels by pathname for later lookups.
       handelsByPathname[pathname] = await handle;
-      
       const { name, kind } = handle;
+      
       const getEntrie = {
         async file() {          
           const entrie = await getFileEntrie(handle);
@@ -92,7 +90,6 @@ const parsePath = (pathname) => [
 
 
 export const mkdirP = (pathname) => readdir(pathname,{create:true});
-
 
 export const onrequest = async (request, sender, sendResponse) => {
   if (request.message?.startsWith('getDirectory')) {
