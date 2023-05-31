@@ -12,14 +12,14 @@ const resolvePathnameFromHandle = async (handle) => (await (await navigator.stor
   .resolve(handle)).join('/') + `/${handle.name}`
 
 export const readdirRecursiv = async (pathname) => (await readdir(pathname,{create:false})).flatMap(
-  handle => handle.kind === 'directory' 
+  async handle => handle.kind === 'directory' 
     ? [pathname, await readdirRecursiv(`${pathname}/${handle.name}`)]
     : handle
   );
 
 const getDirPathnamesRecursiv = async (pathname) => (await readdir(pathname,{create:false}))
   .filter((handel) => handle.kind === 'directory')
-  .map((dirHandle) => getDirPathnamesRecursiv(`${pathname}/${(await dirHandle).name}`));
+  .map(async (dirHandle) => getDirPathnamesRecursiv(`${pathname}/${(await dirHandle).name}`));
 
 // Can returns exist fileHandel but can also create a fileHandle and path
 export const getFileHandleFrom = async (pathname,options={create:false}) => {
