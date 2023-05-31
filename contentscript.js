@@ -15,8 +15,7 @@ export const readdirRecursiv = async (pathname) => (await readdir(pathname,{crea
   handle => handle.kind === 'directory' 
     ? [pathname, await readdirRecursiv(`${pathname}/${handle.name}`)]
     : handle
-  )
-);
+  );
 
 const getDirPathnamesRecursiv = async (pathname) => (await readdir(pathname,{create:false}))
   .filter((handel) => handle.kind === 'directory')
@@ -25,19 +24,16 @@ const getDirPathnamesRecursiv = async (pathname) => (await readdir(pathname,{cre
 // Can returns exist fileHandel but can also create a fileHandle and path
 export const getFileHandleFrom = async (pathname,options={create:false}) => {
   const [directoryName,fileName] = parsePath(pathname);
-  return await (await readdir(directoryName),options))
-    .getFileHandle(fileName),options);
+  return await (await readdir(directoryName,options)).getFileHandle(fileName,options);
 };
 
 // (pathname === '.' ||  pathname === '/' || pathname === './' )
 // Can return a directoryHandleEntrie even if a filePath is given it returns the directoryHandle of the filePath
 export const getDirectoryHandleEntrie = async (pathname = '.', options={create: false}) => 
   await pathname.split('/').reduce(
-    async (dir,dirName) => (dir = dir.getDirectoryHandle 
+    async (dir,dirName) => (dir = dir.getDirectoryHandle) 
       ? [`${dir[0]}/${dirName}`, await dir[1].getDirectoryHandle(dirName, options)]
-      : [dir[0], await dir[1]])],
-    await navigator.storage.getDirectory()
-  );
+      : [dir[0], await dir[1]], await navigator.storage.getDirectory());
 
 const getFileEntrie = async (pathname,handle) => {
       const { name, kind } = handle;    
@@ -84,8 +80,8 @@ export const getRelativePath = async (handle) => `./${(await root.resolve(handle
 
 // [directoryName,fileName];
 const parsePath = (pathname) => [
-  pathname.slice(0,pathname.lastIndexOf('/'),
-  pathname.slice(pathname.lastIndexOf('/')+1
+  pathname.slice(0,pathname.lastIndexOf('/')),
+  pathname.slice(pathname.lastIndexOf('/')+1)
 ];
 
 
@@ -94,9 +90,9 @@ export const mkdirP = (pathname) => readdir(pathname,{create:true});
 export const onrequest = async (request, sender, sendResponse) => {
   if (request.message?.startsWith('getDirectory')) {
     return getDirectoryEntriesRecursive(request.data)
-        .pipeTo(new WriteableStream({ write(entrie)}){ 
+        .pipeTo(new WriteableStream({ write(entrie) {  
           sendResponse({ entrie });
-        });
+        }}));
   } 
   
   if (request.message?.startsWith('save') === 'saveFile') {
